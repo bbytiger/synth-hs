@@ -12,7 +12,7 @@ data I = Add I I | Sub I I | Find S S | Find2 S S I | Len S | Const Int deriving
 data B = Equals S S | GreaterThan I I | GreaterThanOrEqual I I deriving (Show)
 data E = S S | I I | B B deriving (Show)
 
-data V = Vs String | Vi Int | Vb Bool | None deriving (Show, Eq)
+data V = Vs String | Vi Int | Vb Bool | None deriving (Show, Eq, Ord)
 
 -- convert string to list of strings
 strToList :: String -> [String]
@@ -174,18 +174,18 @@ evalonIoList (expr, ioList, args) =
 
 -- eliminate eval equivalents
 -- TODO: the algorithm is actually able to find, we just need to speed up this step
-elimObservationalEquivalence :: ([E], [[String]], [String]) -> [E]
-elimObservationalEquivalence ([], _, _) = []
-elimObservationalEquivalence ((ehd:etl), inputList, args) = 
-    let hdRes = evalonIoList (ehd, inputList, args) in
-    let filteredElist = filter (\x -> not ((evalonIoList (x, inputList, args)) == hdRes)) etl in 
-    ehd : (elimObservationalEquivalence (filteredElist, inputList, args))
+elimObservationalEquivalence :: ([E], [[String]], [String], Set.Set [V]) -> [E]
+elimObservationalEquivalence ([], _, _, _) = []
+elimObservationalEquivalence ((ehd:etl), inputList, args, valStore) = 
+    let hdRes = evalonIoList (ehd, inputList, args) in 
+    if Set.member hdRes valStore then elimObservationalEquivalence (etl, inputList, args, valStore)
+    else ehd : (elimObservationalEquivalence (etl, inputList, args, Set.insert hdRes valStore))
 
 -- write the overall algorithm
 
-checkPList :: ([E], [([String], V)], [String], Set V) -> Maybe E
+checkPList :: ([E], [([String], V)], [String]) -> Maybe E
 checkPList ([], _, _) = Nothing
-checkPList ((p:plist'), ioList, args, valStore) = 
+checkPList ((p:plist'), ioList, args) = 
     if evalExprCorrectness (p, ioList, args) then Just p 
     else checkPList (plist', ioList, args)
 
@@ -194,10 +194,7 @@ runRecCheck (pList, ioList, inpList, args) =
     case checkPList (pList, ioList, args) of 
         Nothing -> 
             let pList' = growProgramList pList in
-            let valStore = Set.empty in 
-            
-
-            let pList'' = elimObservationalEquivalence (pList', inpList, args) in
+            let pList'' = elimObservationalEquivalence (pList', inpList, args, Set.empty) in
             runRecCheck (pList'', ioList, inpList, args)
         Just p -> p
 
