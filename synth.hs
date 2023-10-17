@@ -45,6 +45,6 @@ runRecCheck (pList, ioList, inpList, args) =
             runRecCheck (pList'', ioList, inpList, args)
         Just p -> p
 
-synth :: DSLInterface a => ([([V], V)], [String], a) -> a
+synth :: DSLInterface a => ([([V], V)], [String]) -> a
 synth (ioList, args, t) = 
     runRecCheck (getTerminals (ioList, args, t), ioList, map (\(x, _) -> x) ioList, args)
