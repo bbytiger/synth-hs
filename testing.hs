@@ -202,11 +202,3 @@ synth :: ([([String], V)], [String]) -> E
 synth (ioList, args) = 
     runRecCheck (terminals (ioList, args), ioList, map (\(x, _) -> x) ioList, args)
 
--- test the DSL Interface (for writing generics)
-{- data DSLInterface = DSLInterface {
-
-    exprToSyntax
-    getTerminals
-    getOperations
-    eval
-} -}
