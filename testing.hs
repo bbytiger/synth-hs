@@ -10,7 +10,13 @@ data X = Input String deriving (Show)
 data S = Concat S S | LeftS S I | RightS S I | Substr S I I | Replace S I I S | Trim S | Repeat S I | Substitute S S S | ToText I | X X | T T | ConstStr String deriving (Show)
 data I = Add I I | Sub I I | Find S S | Find2 S S I | Len S | Const Int deriving (Show)
 data B = Equals S S | GreaterThan I I | GreaterThanOrEqual I I deriving (Show)
-data E = S S | I I | B B deriving (Show)
+data E = S S | I I | B B | NoneE deriving (Show)
+
+data Op = ConcatOp | LeftSOp | RightSOp | TrimOp | RepeatOp | ToTextOp | AddOp | SubOp | FindOp | LenOp | EqualsOp | GreaterThanOp | GreaterThanOrEqualOp deriving (Show, Eq, Ord)
+data Type = Es | Ei | Eb deriving (Show, Eq, Ord)
+opToTypeMap :: Map.Map Op [Type] = Map.fromList [(ConcatOp, [Es, Es]), (LeftSOp, [Es, Ei]), (FindOp, [Ei, Ei])]
+opList :: [Op] = [ConcatOp, LeftSOp, RightSOp, TrimOp, RepeatOp, ToTextOp, AddOp, SubOp, FindOp, LenOp, EqualsOp, GreaterThanOp, GreaterThanOrEqualOp]
+typeList :: [Type] = [Es, Ei, Eb]
 
 data V = Vs String | Vi Int | Vb Bool | None deriving (Show, Eq, Ord)
 
@@ -54,6 +60,62 @@ terminals (ioList, argList) =
     (map convertTIntToTExpr baseInts) ++ 
     resArgList ++ 
     (map convertTStrToTExpr resInputList)
+
+handleOpCombinations :: (Op, [Type], Map.Map Type [E], [[E]]) -> [[E]]
+handleOpCombinations (_, [], _, acc) = acc
+handleOpCombinations (op, (thd:ttl), eMapByType, acc) = 
+    case Map.lookup thd eMapByType of
+        Just eTypelist -> handleOpCombinations (op, ttl, eMapByType, concat (map (\x -> map (\y -> x ++ [y]) eTypelist) acc))
+        Nothing -> []
+    
+handleUnwrapOp :: (Op, [E]) -> E
+handleUnwrapOp (op, elist) = 
+    case op of
+        ConcatOp -> case (head elist, last elist) of 
+             (S x, S y) -> S (Concat x y) 
+             _ -> NoneE
+        LeftSOp -> case (head elist, last elist) of 
+             (S x, I y) -> S (LeftS x y) 
+             _ -> NoneE
+        RightSOp -> case (head elist, last elist) of 
+             (S x, I y) -> S (LeftS x y) 
+             _ -> NoneE
+        TrimOp -> case (head elist) of 
+             S x -> S (Trim x) 
+             _ -> NoneE
+        RepeatOp -> case (head elist, last elist) of 
+             (S x, I y) -> S (Repeat x y) 
+             _ -> NoneE
+        ToTextOp -> case (head elist) of 
+             I y -> S (ToText y)
+             _ -> NoneE
+        AddOp -> case (head elist, last elist) of 
+             (I x, I y) -> I (Add x y) 
+             _ -> NoneE
+        SubOp -> case (head elist, last elist) of 
+             (I x, I y) -> I (Sub x y) 
+             _ -> NoneE
+        FindOp -> case (head elist, last elist) of 
+             (S x, S y) -> I (Find x y) 
+             _ -> NoneE
+        LenOp -> case (head elist) of 
+             (S x) -> I (Len x) 
+             _ -> NoneE
+        _ -> NoneE
+
+isEofType :: (E, Type) -> Bool
+isEofType (e,t) = case (e,t) of (S _, Es) -> True; (I _, Ei) -> True; (B _, Eb) -> True; _ -> False
+
+growProgramListGeneric :: [E] -> [E]
+growProgramListGeneric [] = []
+growProgramListGeneric elist = 
+    let slist = map (\t -> (t, (filter (\x -> isEofType (x, t)) elist))) typeList in
+    let eMapByType :: Map.Map Type [E] = Map.fromList slist in
+    concat (map (\op -> 
+        case Map.lookup op opToTypeMap of 
+            Just tlist -> let generatedCombinations = handleOpCombinations (op, tlist, eMapByType, [[]]) in 
+                          map (\c -> handleUnwrapOp (op, c)) generatedCombinations
+            Nothing -> []) opList)
 
 -- grow operation
 growProgramList :: [E] -> [E]
@@ -153,6 +215,7 @@ eval (expr, hm) =
                     let (Vi i1eval) = eval (I i1, hm) in
                     let (Vi i2eval) = eval (I i2, hm) in
                     Vb (i1eval >= i2eval)
+        _ -> None
         
 -- check if expression is correct
 evalExprCorrectness :: (E, [([String], V)], [String]) -> Bool
