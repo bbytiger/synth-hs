@@ -62,8 +62,9 @@ module Synth where
     runRecCheck (pList, ioList, inpList, args, tlist, oplist, optypmap) = 
         case checkPList (pList, ioList, args) of 
             Nothing -> 
-                let pList' = growProgramList (pList, tlist, oplist, optypmap) in
-                let pList'' = {- sort  -}(elimObservationalEquivalence (pList', inpList, args, Set.empty)) in
+                let sortedPList = sort pList in
+                let pList' = growProgramList (sortedPList, tlist, oplist, optypmap) in
+                let pList'' = elimObservationalEquivalence (pList', inpList, args, Set.empty) in
                 runRecCheck (pList'', ioList, inpList, args, tlist, oplist, optypmap)
             Just p -> p
 

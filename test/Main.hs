@@ -15,7 +15,7 @@ spec =
               it "concat" $ do 
                      synth ([([Vs "hello", Vs "you"], Vs "helloyou"), ([Vs "world", Vs "domination"], Vs "worlddomination")], ["x", "y"], StrDsl.Placeholder, StrDsl.ConcatOp, StrDsl.Es) `shouldBe` S (Concat (X (Input "x")) (X (Input "y")))
               it "concat-complex" $ do 
-                     synth ([([Vs "hello", Vs "you"], Vs "hello you"), ([Vs "world", Vs "domination"], Vs "world domination")], ["x", "y"], StrDsl.Placeholder, StrDsl.ConcatOp, StrDsl.Es) `shouldBe` S (Concat (X (Input "x")) (Concat (T (Term " ")) (X (Input "y"))))
+                     synth ([([Vs "hello", Vs "you"], Vs "hello you"), ([Vs "world", Vs "domination"], Vs "world domination")], ["x", "y"], StrDsl.Placeholder, StrDsl.ConcatOp, StrDsl.Es) `shouldBe` S (Concat (Concat (X (Input "x")) (T (Term " "))) (X (Input "y")))
               it "concat-left-right" $ do
                      synth ([([Vs "hello"], Vs "ho"), ([Vs "world"], Vs "wd")], ["x"], StrDsl.Placeholder, StrDsl.ConcatOp, StrDsl.Es) `shouldBe` S (Concat (LeftS (X (Input "x")) (Const 1)) (RightS (X (Input "x")) (Const 1)))
 
