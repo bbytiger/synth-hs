@@ -1,0 +1,4 @@
+{
+    "haskell.hlint.executablePath": "/Users/andrewsima/.local/bin/hlint",
+    "haskell.hlint.run": "onSave"
+}

@@ -5,12 +5,25 @@ module StrDsl where
     import Types
 
     -- define the semantics
-    data T = Term String deriving (Show, Eq, Ord)
-    data X = Input String deriving (Show, Eq, Ord)
+    newtype T = Term String deriving (Show, Eq, Ord)
+    newtype X = Input String deriving (Show, Eq, Ord)
     data S = Concat S S | LeftS S I | RightS S I | Substr S I I | Replace S I I S | Trim S | Repeat S I | Substitute S S S | ToText I | X X | T T | ConstStr String deriving (Show, Eq, Ord)
     data I = Add I I | Sub I I | Find S S | Find2 S S I | Len S | Const Int deriving (Show, Eq, Ord)
     data B = Equals S S | GreaterThan I I | GreaterThanOrEqual I I deriving (Show, Eq, Ord)
     data E = S S | I I | B B | Placeholder deriving (Show, Eq, Ord)
+
+    -- more complicated operation types
+    data Op = ConcatOp | LeftSOp | RightSOp | TrimOp | RepeatOp | ToTextOp | AddOp | SubOp | FindOp | LenOp | EqualsOp | GreaterThanOp | GreaterThanOrEqualOp deriving (Show, Eq, Ord)
+    data Type = Es | Ei | Eb deriving (Show, Eq, Ord)
+    opToTypeMap :: (Op, Type) -> Map.Map Op [Type] 
+    opToTypeMap (_, _) = Map.fromList [(ConcatOp, [Es, Es]), (LeftSOp, [Es, Ei]), (RightSOp, [Es, Ei]), (FindOp, [Ei, Ei])]
+    opList :: Op -> [Op] 
+    opList _ = [ConcatOp, LeftSOp, RightSOp, FindOp, LenOp]
+    typeList :: Type -> [Type] 
+    typeList _ = [Es, Ei, Eb]
+
+    isEofType :: (E, Type) -> Bool
+    isEofType (e,t) = case (e,t) of (S _, Es) -> True; (I _, Ei) -> True; (B _, Eb) -> True; _ -> False
 
     -- convert regular to terminal type 
     convertVToEList :: (V, E) -> [E]
@@ -20,40 +33,51 @@ module StrDsl where
             Vi i -> [I (Const i)]
             _ -> []
 
+    -- handle unwrap op
+    handleUnwrapOp :: (Op, [E]) -> E
+    handleUnwrapOp (op, elist) = 
+        case op of
+            ConcatOp -> case (head elist, last elist) of 
+                (S x, S y) -> S (Concat x y) 
+                _ -> Placeholder
+            LeftSOp -> case (head elist, last elist) of 
+                (S x, I y) -> S (LeftS x y) 
+                _ -> Placeholder
+            RightSOp -> case (head elist, last elist) of 
+                (S x, I y) -> S (RightS x y) 
+                _ -> Placeholder
+            TrimOp -> case head elist of 
+                S x -> S (Trim x) 
+                _ -> Placeholder
+            RepeatOp -> case (head elist, last elist) of 
+                (S x, I y) -> S (Repeat x y) 
+                _ -> Placeholder
+            ToTextOp -> case head elist of 
+                I y -> S (ToText y)
+                _ -> Placeholder
+            AddOp -> case (head elist, last elist) of 
+                (I x, I y) -> I (Add x y) 
+                _ -> Placeholder
+            SubOp -> case (head elist, last elist) of 
+                (I x, I y) -> I (Sub x y) 
+                _ -> Placeholder
+            FindOp -> case (head elist, last elist) of 
+                (S x, S y) -> I (Find x y) 
+                _ -> Placeholder
+            LenOp -> case head elist of 
+                (S x) -> I (Len x) 
+                _ -> Placeholder
+            _ -> Placeholder
+
     -- return all terminals
     terminals :: ([([V], V)], [String], E) -> [E]
     terminals (ioList, argList, _) = 
         let baseChars :: [String] = ["", " ", ",", ".", "!", "?", "(", ")", "[", "]", "<", ">", "{", "}", "-", "+", "_", "/", "$", "#", ":", ";", "@", "%", "0"] in
         let baseInts :: [Int] = [0, 1, 2, 3, 99] in
-        let inputTermList :: [[E]] = map (\(inputVList,outputV) -> (convertVToEList (outputV, Placeholder)) ++ (concat (map (\x -> convertVToEList (x, Placeholder)) inputVList))) ioList in
+        let inputTermList :: [[E]] = map (\(inputVList,outputV) -> convertVToEList (outputV, Placeholder) ++ concatMap (\x -> convertVToEList (x, Placeholder)) inputVList) ioList in
         -- return all terminals
-        let summedTerminals :: [E] = (map (\x -> S (T (Term x))) baseChars) ++ (map (\i -> I (Const i)) baseInts) ++ (map (\x -> S (X (Input x))) argList) ++ (concat inputTermList) in 
+        let summedTerminals :: [E] = map (S . X . Input) argList ++ map (S . T . Term) baseChars ++ map (I . Const) baseInts ++ concat inputTermList in 
         Set.toList (Set.fromList summedTerminals)
-
-    growEList :: [E] -> [E]
-    growEList [] = []
-    growEList elist = 
-        let slist = filter (\x -> case x of S _ -> True; _ -> False) elist in
-        let ilist = filter (\x -> case x of I _ -> True; _ -> False) elist in
-
-        -- handle Str Operations
-        let concatElist = concat (map (\(S x) -> map (\(S y) -> S (Concat x y)) slist) slist) in
-        let leftElist = concat (map (\(S x) -> map (\(I y) -> S (LeftS x y)) ilist) slist) in
-        let rightElist = concat (map (\(S x) -> map (\(I y) -> S (RightS x y)) ilist) slist) in
-        let trimElist = map (\(S x) -> S (Trim x)) slist in
-        let repeatElist = concat (map (\(S x) -> map (\(I y) -> S (Repeat x y)) ilist) slist) in
-        let toTextElist = map (\(I x) -> S (ToText x)) ilist in
-        
-        -- handle Int Operations
-        let addeList = concat (map (\(I x) -> map (\(I y) -> I (Add x y)) ilist) ilist) in
-        let subeList = concat (map (\(I x) -> map (\(I y) -> I (Sub x y)) ilist) ilist) in
-        let findeList = concat (map (\(S x) -> map (\(S y) -> I (Find x y)) slist) slist) in
-        let leneList = map (\(S x) -> I (Len x)) slist in
-
-        -- return updated expr list
-        elist ++ 
-        concatElist ++ leftElist ++ rightElist ++ trimElist ++ repeatElist ++ toTextElist ++
-        addeList ++ subeList ++ findeList ++ leneList
 
     -- eval function
     evalE :: (E, Map.Map String V) -> V
@@ -103,9 +127,7 @@ module StrDsl where
                         let (Vs s1eval) = evalE (S s1, hm) in
                         let (Vs s2eval) = evalE (S s2, hm) in
                         let val = findIndex (isPrefixOf s1eval) (tails s2eval) in 
-                        case val of
-                            Nothing -> None
-                            Just ifind -> Vi ifind
+                        maybe None Vi val
                     Len s -> 
                         let (Vs seval) = evalE (S s, hm) in
                         Vi (length seval)
@@ -128,8 +150,22 @@ module StrDsl where
                         Vb (i1eval >= i2eval)
             _ -> None
 
-    instance DSLInterface E where 
+    instance DSLExprUtils E where 
         convertVToExprList = convertVToEList
         getTerminals = terminals
-        growProgramList = growEList
         eval = evalE
+
+    instance DSLOpList Op where 
+        getOpList = opList
+
+    instance DSLTypeList Type where 
+        getTypeList = typeList
+
+    instance DSLOpTypeMap Op Type where 
+        getMap = opToTypeMap
+
+    instance DSLTypeCheck E Type where 
+        isExprofType = isEofType
+
+    instance DSLOpConversion E Op where 
+        convertOpExprListToExpr = handleUnwrapOp
