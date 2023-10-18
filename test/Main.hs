@@ -39,6 +39,12 @@ spec =
                             synth ([([Vl [Vi 2, Vi 4], Vl [Vi 1, Vi 2, Vi 3, Vi 4]], Vl [Vi 2, Vi 4]), 
                                    ([Vl [Vi 4], Vl [Vi 3, Vi 4]], Vl [Vi 4])], ["?rec","l"], ScmDsl.Placeholder, ScmDsl.ConsLOp, ScmDsl.El) 
                                    `shouldBe` ScmDsl.L (ScmDsl.InputList "?rec")
+                     it "countdown" $ do 
+                            synth ([([Vl [Vi 3, Vi 2, Vi 1, Vi 0], Vi 4], Vl [Vi 4, Vi 3, Vi 2, Vi 1, Vi 0]), 
+                                   ([Vl [Vi 2, Vi 1, Vi 0], Vi 3], Vl [Vi 3, Vi 2, Vi 1, Vi 0]),
+                                   ([Vl [Vi 1, Vi 0], Vi 2], Vl [Vi 2, Vi 1, Vi 0]),
+                                   ([Vl [Vi 0], Vi 1], Vl [Vi 1, Vi 0])], ["?rec","n"], ScmDsl.Placeholder, ScmDsl.ConsLOp, ScmDsl.El) 
+                                   `shouldBe` ScmDsl.L (ScmDsl.Cons (ScmDsl.I (ScmDsl.InputInt "n")) (ScmDsl.InputList "?rec"))
 
 main :: IO ()
 main = hspec spec
