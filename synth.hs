@@ -16,7 +16,8 @@ module Synth where
     growProgramList :: (Ord t, Ord op, DSLExprUtils e, DSLTypeList t, DSLOpList op, DSLOpTypeMap op t, DSLTypeCheck e t, DSLOpConversion e op) => ([e], [t], [op], Map.Map op [t], [[V]], [String]) -> [e]
     growProgramList ([],_,_,_,_,_) = []
     growProgramList (elist,tlist,oplist,optypmap,inpList,args) = 
-        let slist = map (\t -> (t, filter (\x -> isExprofType (x, t, Map.fromList (zip args (head inpList)))) elist)) tlist in
+        let argTypesList = Map.fromList (zip args (head inpList)) in
+        let slist = map (\t -> (t, filter (\x -> isExprofType (x, t, argTypesList)) elist)) tlist in
         let eMapByType = Map.fromList slist in
         elist ++ 
         concatMap (\op -> 
@@ -28,12 +29,11 @@ module Synth where
     -- check if expression is correct
     evalExprCorrectness :: DSLExprUtils a => (a, [([V], V)], [String]) -> Bool
     evalExprCorrectness (expr, ioList, args) = 
-        foldl (\x y -> x && y) True
-        (map
-            (\(inputs, output) -> 
-                let mp' = Map.fromList (zip args inputs) in
-                eval (expr, mp') == output)
-        ioList)
+        all
+        (\ (inputs, output)
+            -> let mp' = Map.fromList (zip args inputs)
+                in eval (expr, mp') == output)
+        ioList
 
     evalonIoList :: DSLExprUtils a => (a, [[V]], [String]) -> [V]
     evalonIoList (expr, ioList, args) = 

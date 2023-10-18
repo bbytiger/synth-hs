@@ -156,7 +156,7 @@ module ScmDsl where
                 (I x, I y) -> I (Times x y) 
                 _ -> Placeholder
             PlusOp -> case (head elist, last elist) of 
-                (I x, I y) -> I (Times x y) 
+                (I x, I y) -> I (Plus x y) 
                 _ -> Placeholder
             Add1Op -> case head elist of 
                 I x -> I (Add1 x) 
