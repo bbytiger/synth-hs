@@ -150,8 +150,7 @@ module StrDsl where
                         Vb (i1eval >= i2eval)
             _ -> None
 
-    instance DSLExprUtils E where 
-        convertVToExprList = convertVToEList
+    instance DSLExprUtils E where
         getTerminals = terminals
         eval = evalE
 

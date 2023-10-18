@@ -2,13 +2,12 @@
     import qualified Data.Map as Map
 
     -- define basic types
-    data V = Vs String | Vi Int | Vb Bool | None deriving (Show, Eq, Ord)
+    data V = Vs String | Vi Int | Vb Bool | Vl [V] | None deriving (Show, Eq, Ord)
 
     -- generic DSL interface
     {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 
     class DSLExprUtils e where 
-        convertVToExprList :: (V, e) -> [e]
         getTerminals :: ([([V], V)], [String], e) -> [e]
         eval :: (e, Map.Map String V) -> V
 
