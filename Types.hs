@@ -21,7 +21,7 @@
         getMap :: (op, t) -> Map.Map op [t]
 
     class DSLTypeCheck e t where 
-        isExprofType :: (e, t) -> Bool
+        isExprofType :: (e, t, Map.Map String V) -> Bool
 
     class DSLOpConversion e op where
         convertOpExprListToExpr :: (op, [e]) -> e

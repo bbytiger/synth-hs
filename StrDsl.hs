@@ -22,8 +22,8 @@ module StrDsl where
     typeList :: Type -> [Type] 
     typeList _ = [Es, Ei, Eb]
 
-    isEofType :: (E, Type) -> Bool
-    isEofType (e,t) = case (e,t) of (S _, Es) -> True; (I _, Ei) -> True; (B _, Eb) -> True; _ -> False
+    isEofType :: (E, Type, Map.Map String V) -> Bool
+    isEofType (e,t, _) = case (e,t) of (S _, Es) -> True; (I _, Ei) -> True; (B _, Eb) -> True; _ -> False
 
     -- convert regular to terminal type 
     convertVToEList :: (V, E) -> [E]

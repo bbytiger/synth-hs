@@ -13,10 +13,10 @@ module Synth where
             Just eTypelist -> handleOpCombinations (op, ttl, eMapByType, concatMap (\x -> map (\y -> x ++ [y]) eTypelist) acc)
             Nothing -> []
 
-    growProgramList :: (Ord t, Ord op, DSLExprUtils e, DSLTypeList t, DSLOpList op, DSLOpTypeMap op t, DSLTypeCheck e t, DSLOpConversion e op) => ([e], [t], [op], Map.Map op [t]) -> [e]
-    growProgramList ([],_,_,_) = []
-    growProgramList (elist,tlist,oplist,optypmap) = 
-        let slist = map (\t -> (t, filter (\x -> isExprofType (x, t)) elist)) tlist in
+    growProgramList :: (Ord t, Ord op, DSLExprUtils e, DSLTypeList t, DSLOpList op, DSLOpTypeMap op t, DSLTypeCheck e t, DSLOpConversion e op) => ([e], [t], [op], Map.Map op [t], [[V]], [String]) -> [e]
+    growProgramList ([],_,_,_,_,_) = []
+    growProgramList (elist,tlist,oplist,optypmap,inpList,args) = 
+        let slist = map (\t -> (t, filter (\x -> isExprofType (x, t, Map.fromList (zip args (head inpList)))) elist)) tlist in
         let eMapByType = Map.fromList slist in
         elist ++ 
         concatMap (\op -> 
@@ -63,7 +63,7 @@ module Synth where
         case checkPList (pList, ioList, args) of 
             Nothing -> 
                 let sortedPList = sort pList in
-                let pList' = growProgramList (sortedPList, tlist, oplist, optypmap) in
+                let pList' = growProgramList (sortedPList, tlist, oplist, optypmap, inpList, args) in
                 let pList'' = elimObservationalEquivalence (pList', inpList, args, Set.empty) in
                 runRecCheck (pList'', ioList, inpList, args, tlist, oplist, optypmap)
             Just p -> p
